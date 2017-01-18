@@ -50,12 +50,22 @@ class Wunderlist extends BaseProvider
             $datasets_buckets = array_column($service['datasets'], 'accessLevel', 'id');
 
             $today_cards = [];
+            $starred_cards = [];
 
             $final_json['projects'][] = [
                 'uuid' => self::NAME.'-today',
                 'source' => self::NAME,
                 'title' => 'Today',
                 'sortIndex' => -1,
+                'accessLevel' => 1,
+            ];
+
+
+            $final_json['projects'][] = [
+                'uuid' => self::NAME.'-starred',
+                'source' => self::NAME,
+                'title' => 'Starred',
+                'sortIndex' => 0,
                 'accessLevel' => 1,
             ];
 
@@ -87,6 +97,15 @@ class Wunderlist extends BaseProvider
                 ];
 
                 $final_json['lists'][] = [
+                    'uuid' => "starred-{$board['id']}",
+                    'source' => self::NAME,
+                    'title' => $board['title'],
+                    'parent' => self::NAME.'-starred',
+                    'default' => true,
+                    'can_create_new' => $this->canCreateNew()
+                ];
+
+                $final_json['lists'][] = [
                     'uuid' => "today-{$board['id']}",
                     'source' => self::NAME,
                     'title' => $board['title'],
@@ -111,6 +130,7 @@ class Wunderlist extends BaseProvider
 
                     foreach ($tasks as $task) {
                         $today = array_key_exists('due_date', $task) && (Carbon::createFromTimestamp(strtotime($task['due_date']), $user_tz)->isToday() || Carbon::createFromTimestamp(strtotime($task['due_date']), $user_tz)->isPast());
+                        $starred = array_key_exists('starred', $task);
 
                         $card_data = [
                             'title' => $task['title'],
@@ -119,6 +139,7 @@ class Wunderlist extends BaseProvider
                             'parent' => "tasks-{$board['id']}",
                             'permalink' => "https://www.wunderlist.com/#/tasks/{$task['id']}",
                             'desc' => '',
+                            'starred' => $task['starred'],
                             'item_order' => (int)array_search($task['id'], $task_order_actual['values'], false),
                             'editable' => $this->itemsAreEditable(),
                             'completable' => true
@@ -134,6 +155,16 @@ class Wunderlist extends BaseProvider
 
                             $final_json['cards'][] = $card_data;
                             $today_cards[$task['id']] = "today-{$board['id']}";
+                        }
+
+                        if($starred) {
+                            $card_data['parent'] = "starred-{$board['id']}";
+
+                            $card_data['original_id'] = $card_data['uuid'];
+                            $card_data['uuid'] = "starred-{$card_data['uuid']}";
+
+                            $final_json['cards'][] = $card_data;
+                            $starred_cards[$task['id']] = "starred-{$board['id']}";
                         }
 
                     }
