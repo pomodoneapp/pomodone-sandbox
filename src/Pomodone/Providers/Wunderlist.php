@@ -18,6 +18,7 @@ class Wunderlist extends BaseProvider
     const NAME = 'wunderlist';
     const TITLE = 'Wunderlist';
 
+    //Main data retrieval method
     public function itemsFromSelectedContainers(array $service, array $filters = [])
     {
         $final_json = [
@@ -200,6 +201,7 @@ class Wunderlist extends BaseProvider
         return $final_json;
     }
 
+    //Invoked when a user wants to add this data provider
     public function add(Application $app)
     {
         //$app['session']->set('csrf', );
@@ -218,6 +220,7 @@ class Wunderlist extends BaseProvider
 
     }
 
+    //Service provider initiated auth callback (ex. for oAuth)
     public function authorize($token, $secret)
     {
         $oauth_token_info = [
@@ -239,6 +242,7 @@ class Wunderlist extends BaseProvider
         return $oauth_token_info;
     }
 
+    //Get service projects (or other top level entities)
     public function getContainers(array $service, $short_output = true)
     {
 
@@ -314,6 +318,7 @@ class Wunderlist extends BaseProvider
         return $template_data;
     }
 
+    //Client event handling that might modify data on the remote service (not required)
     public function sendEvents(array $event_item, array $service)
     {
         $this->logger->addError("dumping id {$event_item['uuid']}", $event_item);
@@ -356,6 +361,7 @@ class Wunderlist extends BaseProvider
         return $result;
     }
 
+    //Create new item on the remote service (not required)
     public function storeLocalItem(Request $request)
     {
         $service = $this->getServiceAccount();
@@ -407,6 +413,7 @@ class Wunderlist extends BaseProvider
         return ['success' => true, 'card' => $item];
     }
 
+    //Edit item on the remote service (not required)
     public function editLocalItem(Request $request)
     {
         $service = $this->getServiceAccount();
@@ -468,6 +475,7 @@ class Wunderlist extends BaseProvider
 
     }
 
+    //Get single item from service (not required)
     public function getItemFromService($item_data, $service)
     {
         try {
@@ -505,6 +513,7 @@ class Wunderlist extends BaseProvider
         }
     }
 
+    //Webhooks (not used as of yet)
     public function registerForServiceUpdates(array $service)
     {
         $account_id = (string)$service['_id'];
