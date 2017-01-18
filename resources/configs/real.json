@@ -1,0 +1,8 @@
+{
+  "services": {
+    "wunderlist": {
+      "key":"",
+      "secret": ""
+    }
+  }
+}

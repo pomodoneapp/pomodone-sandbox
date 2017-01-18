@@ -1,0 +1,43 @@
+{
+    "minimum-stability":"dev",
+    "prefer-stable": true,
+    "require": {
+        "php": "~5.5",
+        "ext-mongo": "*",
+        "ext-oauth": "*",
+
+        "silex/silex": "~1.2",
+        "igorw/config-service-provider": "1.2.*@dev",
+        "twig/twig": "1.*",
+        "monolog/monolog": "~1.0",
+        "symfony/security": "~2.3",
+        "symfony/console": "~2.3",
+        "symfony/twig-bridge": "~2.3",
+        "swiftmailer/swiftmailer": ">=4.1.2,<4.2-dev",
+        "moriony/silex-mongo-provider": "1.2.2",
+        "ohmy/auth": "dev-master",
+        "guzzlehttp/guzzle": "~5.0",
+        "rpnzl/arrch": "dev-master",
+        "guzzlehttp/oauth-subscriber": "*",
+        "gamegos/jwt": "~0.1",
+        "nikic/iter": "~1.2",
+        "nesbot/carbon": "~1.14",
+        "phpextra/sorter": "1.0.*@dev",
+        "ramsey/uuid": "3.0.*@dev",
+        "jdesrosiers/silex-cors-provider": "^0.1.5",
+        "leongkui/silex-php-redis": "dev-master",
+        "amstaffix/silex-pagination": "^1.1",
+        "google/apiclient": "1.*"
+    },
+    "autoload": {
+        "psr-0": {
+            "Pomodone": "src/"
+        }
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/dipstudio/ohmy-auth"
+        }
+    ]
+}
