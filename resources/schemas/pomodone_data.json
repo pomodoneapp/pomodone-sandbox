@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Product set",
+  "type": "object",
+  "required": ["cards", "lists", "projects"],
+  "properties": {
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": ["string","number"]
+          },
+          "parent": {
+            "type": ["string","number"]
+          },
+          "desc": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "permalink": {
+            "type": "string"
+
+          }
+        }
+      }
+    },
+    "lists": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "uuid": {
+            "type": ["string","number"]
+          },
+          "source": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "parent": {
+            "type": ["string","number"]
+          },
+          "default": "boolean"
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "uuid": {
+            "type": ["string","number"]
+          },
+          "source": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sortIndex": {
+            "type": "number"
+          },
+          "accessLevel": {
+            "type": ["string","number"]
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": {
+    "callbacks": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "method": {
+              "type": "string",
+              "enum": ["GET","POST"]
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    }
+  }
+}

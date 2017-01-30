@@ -27,7 +27,8 @@
         "jdesrosiers/silex-cors-provider": "^0.1.5",
         "leongkui/silex-php-redis": "dev-master",
         "amstaffix/silex-pagination": "^1.1",
-        "google/apiclient": "1.*"
+        "google/apiclient": "1.*",
+        "justinrainbow/json-schema": "^4.1"
     },
     "autoload": {
         "psr-0": {
