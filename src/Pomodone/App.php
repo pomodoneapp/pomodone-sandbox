@@ -2,26 +2,10 @@
 
 namespace Pomodone;
 
-use Binfo\Silex\MobileDetectServiceProvider;
 use JDesrosiers\Silex\Provider\CorsServiceProvider;
 use Kilte\Silex\Pagination\PaginationServiceProvider;
 use Monolog\Logger;
-//use Pomodone\Providers\Basecamp;
-use Pomodone\Integrations\Controller as IntegrationsController;
-use Pomodone\Providers\Asana;
-use Pomodone\Providers\Basecamp;
-use Pomodone\Providers\Basecamp3;
-use Pomodone\Providers\BasecampClassic;
-use Pomodone\Providers\CustomSource;
-use Pomodone\Providers\Dashboard;
-use Pomodone\Providers\Evernote;
-use Pomodone\Providers\GoogleCalendar;
-use Pomodone\Providers\iCalendar;
-use Pomodone\Providers\Jira;
-use Pomodone\Providers\Local;
-use Pomodone\Providers\Pivotal;
-use Pomodone\Providers\Todoist;
-use Pomodone\Providers\Toodledo;
+
 use Pomodone\Providers\Wunderlist;
 use Silex\Application;
 use Silex\Provider\HttpCacheServiceProvider;
@@ -35,11 +19,9 @@ use Silex\Provider\TwigServiceProvider;
 use Silex\Provider\UrlGeneratorServiceProvider;
 use Silex\Provider\ValidatorServiceProvider;
 use Silex\Provider\DoctrineServiceProvider;
-use SilexAssetic\AsseticServiceProvider;
 use SilexPhpRedis\PhpRedisProvider;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Pomodone\Providers\Trello;
 use OAuth;
 use Symfony\Component\HttpFoundation\Response;
 use Igorw\Silex\ConfigServiceProvider;
