@@ -14,6 +14,7 @@ abstract class BaseProvider implements ServiceProviderInterface {
 
     const NAME = '';
     const TITLE = '';
+    const CONTAINER_TITLE = 'project';
 
     protected $key = '';
     protected $secret = '';
@@ -34,6 +35,11 @@ abstract class BaseProvider implements ServiceProviderInterface {
         'authorize' => 'authorize'
     ];
 
+    public $editable_fields = [
+        'title' => true,
+        'parent' => true,
+    ];
+
     public function __construct(array $configuration)
     {
         $this->key = $configuration['key'];
@@ -43,6 +49,16 @@ abstract class BaseProvider implements ServiceProviderInterface {
     public function getTitle()
     {
         return $this::TITLE;
+    }
+
+    public function getContainerTitle()
+    {
+        return $this::CONTAINER_TITLE;
+    }
+
+    public function getEditableFields()
+    {
+        return $this->editable_fields;
     }
 
     protected function getSort(array $service)
@@ -68,6 +84,10 @@ abstract class BaseProvider implements ServiceProviderInterface {
 
         $app["services.".$this::NAME.".authorize"] = $app->protect(function($token, $secret) use ($app) {
             return $this->authorize($token, $secret);
+        });
+
+        $app["services.".$this::NAME.".removeProvider"] = $app->protect(function($service = []) use ($app) {
+            return $this->remove($service);
         });
 
         $app["services.".$this::NAME.".items"] = $app->protect(function($service, $filters = []) use ($app) {
@@ -114,13 +134,17 @@ abstract class BaseProvider implements ServiceProviderInterface {
             return $this->getTitle();
         });
 
+        $app["services.".$this::NAME.".container_title"] = $app->protect(function() {
+            return $this->getContainerTitle();
+        });
+
         $app["services.".$this::NAME.".get_service_item"] = $app->protect(function($item_data, $service) {
             return $this->getItemFromService($item_data, $service);
         });
 
         //Set up per service logging
         $app["monolog.".$this::NAME.".handler"] = $app->share(function ($app) {
-                return new StreamHandler(__DIR__ . "/../../../resources/log/".$this::NAME.".log", Logger::DEBUG);
+            return new StreamHandler(__DIR__ . "/../../../resources/log/".$this::NAME.".log", Logger::DEBUG);
         });
     }
 
@@ -145,13 +169,6 @@ abstract class BaseProvider implements ServiceProviderInterface {
     }
 
     /**
-     * @param array $service
-     * @param array $filters
-     * @return array
-     */
-    abstract public function itemsFromSelectedContainers(array $service, array $filters = []);
-
-    /**
      * @param Application $app
      * @return RedirectResponse
      */
@@ -171,33 +188,44 @@ abstract class BaseProvider implements ServiceProviderInterface {
      */
     abstract public function getContainers(array $service, $short_output = true);
 
+    /**
+     * @param array $service
+     * @param array $filters
+     * @return array
+     */
+    abstract public function itemsFromSelectedContainers(array $service, array $filters = []);
+
+    /**
+     * @param array $service
+     * @return bool
+     */
+    public function remove(array $service)
+    {
+        return true;
+    }
+
     public function sendEvents(array $events, array $service) {
 
 
-        /*switch($events['action']) {
+        switch($events['action']) {
             case 'timerStart':
-                $r->sAdd("Timers:{$service['uid']}","Timer:{$service['uid']}:{$events['startTimeStamp']}");
-                $r->setEx("Timer:{$service['uid']}:{$events['startTimeStamp']}", (int)$events['timer']['duration'], json_encode($events));
+
 
                 break;
             case 'timerStop':
-                $r->sRem("Timers:{$service['uid']}","Timer:{$service['uid']}:{$events['startTimeStamp']}");
-                $r->del("Timer:{$service['uid']}:{$events['startTimeStamp']}");
-                break;
-        }*/
 
-        switch($events['action']) {
-            case 'cardDone':
-                //$this->app["services.dashboard.remove"]($events['uuid']);
+                break;
+            case 'pauseStart':
+
+                break;
+            case 'pauseStop':
+
+
                 break;
         }
 
-        switch($events['action']) {
-            case 'timerStart':
-            case 'timerStop':
-            case 'cardDone':
-                break;
-        }
+
+
 
         return ['success' => true, 'message' => 'Event sync is not yet implemented for this provider'];
     }
@@ -242,7 +270,7 @@ abstract class BaseProvider implements ServiceProviderInterface {
     public function itemsAreEditable()
     {
         $reflector = new \ReflectionClass($this);
-        
+
         $methods = $reflector->getMethods();
 
         $own_methods = [];

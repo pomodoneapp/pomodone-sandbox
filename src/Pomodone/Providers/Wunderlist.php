@@ -17,6 +17,7 @@ class Wunderlist extends BaseProvider
 {
     const NAME = 'wunderlist';
     const TITLE = 'Wunderlist';
+    const CONTAINER_TITLE = 'list';
 
     //Main data retrieval method
     public function itemsFromSelectedContainers(array $service, array $filters = [])
@@ -27,85 +28,94 @@ class Wunderlist extends BaseProvider
             'lists' => []
         ];
 
+        $show_today_overdue = filter_var(\A::get($service, 'settings/show_today', true), FILTER_VALIDATE_BOOLEAN);
 
-            $client = new GuzzleHttpClient([
-                'base_url' => 'https://a.wunderlist.com/api/v1/',
-                'defaults' => [
-                    'headers' => [
-                        'X-Client-ID' => $this->key,
-                        'X-Access-Token' => "{$service['oauth_token']}",
-                    ]
+        $client = new GuzzleHttpClient([
+            'base_url' => 'https://a.wunderlist.com/api/v1/',
+            'defaults' => [
+                'headers' => [
+                    'X-Client-ID' => $this->key,
+                    'X-Access-Token' => "{$service['oauth_token']}",
                 ]
-            ]);
+            ]
+        ]);
 
 
-            $sort = $this->getSort($service);
+        $sort = $this->getSort($service);
 
-            $final_json['sources'][] = [
-                'uuid' => self::NAME,
-                'title' => self::TITLE,
-                'sortIndex' => $sort
-            ];
+        $final_json['sources'][] = [
+            'uuid' => self::NAME,
+            'title' => self::TITLE,
+            'sortIndex' => $sort,
+            'editable_fields' => $this->getEditableFields()
+        ];
 
-            $selected_datasets = array_column($service['datasets'], 'sortIndex', 'id');
-            $datasets_buckets = array_column($service['datasets'], 'accessLevel', 'id');
+        $selected_datasets = array_column($service['datasets'], 'sortIndex', 'id');
+        $datasets_buckets = array_column($service['datasets'], 'accessLevel', 'id');
 
-            $today_cards = [];
-            $starred_cards = [];
+        $today_cards = [];
+        $starred_cards = [];
 
+        if($show_today_overdue) {
             $final_json['projects'][] = [
                 'uuid' => self::NAME.'-today',
                 'source' => self::NAME,
                 'title' => 'Today',
                 'sortIndex' => -1,
                 'accessLevel' => 1,
+                'can_create_new' => false
             ];
+        }
 
+
+
+        $final_json['projects'][] = [
+            'uuid' => self::NAME.'-starred',
+            'source' => self::NAME,
+            'title' => 'Starred',
+            'sortIndex' => -2,
+            'accessLevel' => 1,
+        ];
+
+        $lists = $client->get('lists')->json();
+
+        $list_ids = array_column($lists, 'id');
+
+        foreach ($service['datasets'] as $board) {
+
+            if(!in_array($board['id'], $list_ids)) continue;
+
+            if(!empty($filters['project']) && !in_array($board['id'], $filters['project'])) continue;
 
             $final_json['projects'][] = [
-                'uuid' => self::NAME.'-starred',
+                'uuid' => $board['id'],
                 'source' => self::NAME,
-                'title' => 'Starred',
-                'sortIndex' => 0,
-                'accessLevel' => 1,
+                'title' => $board['title'],
+                'sortIndex' => $selected_datasets[$board['id']],
+                'accessLevel' => $datasets_buckets[$board['id']],
             ];
 
-            $lists = $client->get('lists')->json();
 
-            $list_ids = array_column($lists, 'id');
 
-            foreach ($service['datasets'] as $board) {
-                
-                if(!in_array($board['id'], $list_ids)) continue;
+            $final_json['lists'][] = [
+                'uuid' => "tasks-{$board['id']}",
+                'source' => self::NAME,
+                'title' => 'Tasks',
+                'parent' => $board['id'],
+                'default' => true,
+                'can_create_new' => $this->canCreateNew()
+            ];
 
-                if(!empty($filters['project']) && !in_array($board['id'], $filters['project'])) continue;
+            $final_json['lists'][] = [
+                'uuid' => "starred-{$board['id']}",
+                'source' => self::NAME,
+                'title' => $board['title'],
+                'parent' => self::NAME.'-starred',
+                'default' => true,
+                'can_create_new' => $this->canCreateNew()
+            ];
 
-                $final_json['projects'][] = [
-                    'uuid' => $board['id'],
-                    'source' => self::NAME,
-                    'title' => $board['title'],
-                    'sortIndex' => $selected_datasets[$board['id']],
-                    'accessLevel' => $datasets_buckets[$board['id']],
-                ];
-
-                $final_json['lists'][] = [
-                    'uuid' => "tasks-{$board['id']}",
-                    'source' => self::NAME,
-                    'title' => 'Tasks',
-                    'parent' => $board['id'],
-                    'default' => true,
-                    'can_create_new' => $this->canCreateNew()
-                ];
-
-                $final_json['lists'][] = [
-                    'uuid' => "starred-{$board['id']}",
-                    'source' => self::NAME,
-                    'title' => $board['title'],
-                    'parent' => self::NAME.'-starred',
-                    'default' => true,
-                    'can_create_new' => $this->canCreateNew()
-                ];
-
+            if($show_today_overdue) {
                 $final_json['lists'][] = [
                     'uuid' => "today-{$board['id']}",
                     'source' => self::NAME,
@@ -114,41 +124,82 @@ class Wunderlist extends BaseProvider
                     'default' => true,
                     'can_create_new' => $this->canCreateNew()
                 ];
+            }
 
-                try {
-                    $user = $this->app['session']->get('user');
-                    $user_tz = new \DateTimeZone(empty($user['timezone']) ? 'UTC' : $user['timezone']);
+            try {
+                $user_tz = 'UTC';
 
-                    $tasks = $client->get('tasks', ['query' => ['list_id' => $board['id']]])->json();
+                $tasks = $client->get('tasks', ['query' => ['list_id' => $board['id']]])->json();
 
-                    $task_order = $client->get('task_positions', ['query' => ['list_id' => $board['id']]])->json();
+                $task_order = $client->get('task_positions', ['query' => ['list_id' => $board['id']]])->json();
 
-                    $task_order_actual = [];
+                $task_order_actual = [];
 
-                    if(is_array($task_order) && count($task_order) > 0) {
-                        $task_order_actual = reset($task_order);
+                if(is_array($task_order) && count($task_order) > 0) {
+                    $task_order_actual = reset($task_order);
+                }
+
+                foreach ($tasks as $task) {
+                    $today = array_key_exists('due_date', $task) && (Carbon::createFromTimestamp(strtotime($task['due_date']), $user_tz)->isToday() || Carbon::createFromTimestamp(strtotime($task['due_date']), $user_tz)->isPast());
+                    $starred = array_key_exists('starred', $task) && $task['starred'];
+
+                    $card_data = [
+                        'title' => $task['title'],
+                        'source' => self::NAME,
+                        'uuid' => $task['id'],
+                        'parent' => "tasks-{$board['id']}",
+                        'permalink' => "https://www.wunderlist.com/#/tasks/{$task['id']}",
+                        'desc' => '',
+                        //'starred' => $task['starred'],
+                        'sortIndex' => (int)array_search($task['id'], $task_order_actual['values'], false),
+                        'editable' => $this->itemsAreEditable(),
+                        'completable' => true,
+                    ];
+
+                    $valid_due_date = strtotime($task['due_date']);
+
+                    if($valid_due_date) {
+                        $c = Carbon::createFromFormat('Y-m-d', $task['due_date'], $user_tz);
+                        $c->setTime(23,59);
+                        $card_data['due_date'] = strtotime($c->toIso8601String());
                     }
 
-                    foreach ($tasks as $task) {
-                        $today = array_key_exists('due_date', $task) && (Carbon::createFromTimestamp(strtotime($task['due_date']), $user_tz)->isToday() || Carbon::createFromTimestamp(strtotime($task['due_date']), $user_tz)->isPast());
-                        $starred = array_key_exists('starred', $task);
-
-                        $card_data = [
-                            'title' => $task['title'],
-                            'source' => self::NAME,
-                            'uuid' => $task['id'],
-                            'parent' => "tasks-{$board['id']}",
-                            'permalink' => "https://www.wunderlist.com/#/tasks/{$task['id']}",
-                            'desc' => '',
-                            'starred' => $task['starred'],
-                            'item_order' => (int)array_search($task['id'], $task_order_actual['values'], false),
-                            'editable' => $this->itemsAreEditable(),
-                            'completable' => true
+                    if($filters['api'] === 2) {
+                        $card_data['parents'] = [
+                            $card_data['parent'] => [
+                                'uuid' => $card_data['parent'],
+                                'is_primary' => true,
+                                'sortIndex' => $card_data['sortIndex'],
+                                'label' => $card_data['label']
+                            ]
                         ];
+
+                        if($today && $show_today_overdue) {
+                            $card_data['parents']["today-{$board['id']}"] = [
+                                'uuid' => "today-{$board['id']}",
+                                'is_primary' => false,
+                                'sortIndex' => $card_data['sortIndex'],
+                                'label' => $card_data['label']
+                            ];
+                        }
+
+                        if($starred) {
+                            $card_data['parents']["starred-{$board['id']}"] = [
+                                'uuid' => "starred-{$board['id']}",
+                                'is_primary' => false,
+                                'sortIndex' => $card_data['sortIndex'],
+                                'label' => $card_data['label']
+                            ];
+                        }
+
+                        unset($card_data['parent'], $card_data['sortIndex']);
 
                         $final_json['cards'][] = $card_data;
 
-                        if($today) {
+                    } else {
+                        $final_json['cards'][] = $card_data;
+
+                        if($today && $show_today_overdue) {
                             $card_data['parent'] = "today-{$board['id']}";
 
                             $card_data['original_id'] = $card_data['uuid'];
@@ -167,35 +218,39 @@ class Wunderlist extends BaseProvider
                             $final_json['cards'][] = $card_data;
                             $starred_cards[$task['id']] = "starred-{$board['id']}";
                         }
-
-                    }
-                } catch (\Exception $ex) {
-                    if ($ex->getCode() != 404) {
-
-                        $final_json['errors'][] = [
-                            'message' => 'Error while syncing ' . self::TITLE,
-                            'details' => $ex->getMessage()
-                        ];
                     }
 
+
+
+                }
+            } catch (\Exception $ex) {
+                if ($ex->getCode() != 404) {
+                    $this->app['raven']->captureException($ex);
+
+                    $final_json['errors'][] = [
+                        'message' => 'Error while syncing ' . self::TITLE,
+                        'details' => $ex->getMessage()
+                    ];
                 }
 
             }
 
-            $strategy = new ComplexSortStrategy();
-            $strategy
-                ->setSortOrder(Sorter::ASC)
-                ->sortBy('item_order');
+        }
 
-            $sorter = new Sorter();
-            $final_json['cards'] = $sorter->setStrategy($strategy)->sort($final_json['cards']);
+        $strategy = new ComplexSortStrategy();
+        $strategy
+            ->setSortOrder(Sorter::ASC)
+            ->sortBy('sortIndex');
 
-            $final_json['lists'] = array_values(array_filter($final_json['lists'], function($list) use ($today_cards) {
-                if(strpos($list['uuid'], 'today-') === 0) {
-                    return in_array($list['uuid'], $today_cards);
-                }
-                return true;
-            }));
+        $sorter = new Sorter();
+        $final_json['cards'] = $sorter->setStrategy($strategy)->sort($final_json['cards']);
+
+        /*$final_json['lists'] = array_values(array_filter($final_json['lists'], function($list) use ($today_cards, $starred_cards) {
+            if(strpos($list['uuid'], 'today-') === 0 || strpos($list['uuid'], 'starred-') === 0) {
+                return in_array($list['uuid'], $today_cards) || in_array($list['uuid'], $starred_cards);
+            }
+            return true;
+        }));*/
 
 
         return $final_json;
@@ -332,6 +387,10 @@ class Wunderlist extends BaseProvider
                 ]
             ]
         ]);
+
+        if(array_key_exists('original_id', $event_item['card'])) {
+            $event_item['uuid'] = $event_item['card']['original_id'];
+        }
 
         $task = $client->get("tasks/{$event_item['uuid']}")->json();
 
@@ -584,5 +643,17 @@ class Wunderlist extends BaseProvider
         }
 
         return $responses;
+    }
+
+    public function getEditableFields()
+    {
+
+        $default_editable = parent::getEditableFields();
+
+        $default_editable += [
+            'description' => true
+        ];
+
+        return $default_editable;
     }
 }
